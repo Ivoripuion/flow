@@ -1,7 +1,7 @@
 import { Overlay } from '@literal-ui/core'
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
-import { MdClose, MdTranslate } from 'react-icons/md'
+import { MdClose, MdTranslate, MdContentCopy } from 'react-icons/md'
 
 import { useAIConfig, useTranslation } from '../hooks'
 import { scale } from '../platform'
@@ -65,6 +65,16 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
       setHeight(rect.height)
     }
   }, [translatedText, loading, error])
+
+  // copy button
+  const handleCopy = async () => {
+    if (!translatedText) return
+    try {
+      await navigator.clipboard.writeText(translatedText)
+    } catch (err) {
+      console.error('Failed to copy text:', err)
+    }
+  }
 
   // Calculate position relative to container
   const anchorLeft = anchorRect.left + viewRect.left - containerRect.left
@@ -145,12 +155,23 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
               {t('translate')}
             </span>
           </div>
-          <IconButton
-            title={t('close')}
-            Icon={MdClose}
-            size={scale(18, 20)}
-            onClick={onClose}
-          />
+          <div className="flex gap-1">
+            {/* 复制按钮：仅在有有效翻译结果时显示 */}
+            {!loading && !error && translatedText && (
+              <IconButton
+                title={t('copy')}
+                Icon={MdContentCopy}
+                size={scale(18, 20)}
+                onClick={handleCopy}
+              />
+            )}
+            <IconButton
+              title={t('close')}
+              Icon={MdClose}
+              size={scale(18, 20)}
+              onClick={onClose}
+            />
+          </div>
         </div>
         <div className="typescale-body-medium text-on-surface">
           {loading && (
