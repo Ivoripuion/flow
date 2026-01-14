@@ -1,7 +1,7 @@
 import { Overlay } from '@literal-ui/core'
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
-import { MdClose, MdTranslate, MdContentCopy } from 'react-icons/md'
+import { MdClose, MdTranslate, MdContentCopy, MdCheck } from 'react-icons/md'
 
 import { useAIConfig, useTranslation } from '../hooks'
 import { scale } from '../platform'
@@ -31,6 +31,7 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
   const popupRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(300) // Default width
   const [height, setHeight] = useState(100) // Default height
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!config.apiKey || !config.apiUrl || !config.modelName) {
@@ -71,6 +72,8 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
     if (!translatedText) return
     try {
       await navigator.clipboard.writeText(translatedText)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
     } catch (err) {
       console.error('Failed to copy text:', err)
     }
@@ -156,13 +159,14 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
             </span>
           </div>
           <div className="flex gap-1">
-            {/* 复制按钮：仅在有有效翻译结果时显示 */}
+            {/* 复制按钮：成功后短暂显示 ✔️ */}
             {!loading && !error && translatedText && (
               <IconButton
-                title={t('copy')}
-                Icon={MdContentCopy}
+                title={copied ? t('copied') : t('copy')}
+                Icon={copied ? MdCheck : MdContentCopy}
                 size={scale(18, 20)}
                 onClick={handleCopy}
+                className={copied ? 'text-success' : ''}
               />
             )}
             <IconButton
