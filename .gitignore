@@ -38,3 +38,14 @@ yarn-error.log*
 **/public/workbox-*
 **/public/sw.*
 **/public/fallback-*
+
+# Knowledge base databases (contains user data + embeddings)
+*.db
+*.db-journal
+rags/
+
+# Claude Code local settings
+.claude/
+
+# TypeScript build info
+*.tsbuildinfo

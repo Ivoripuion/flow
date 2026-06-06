@@ -19,7 +19,7 @@ export const AIView: React.FC<PaneViewProps> = (props) => {
             name={t('api_key')}
             type={showApiKey ? 'text' : 'password'}
             value={config.apiKey || ''}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               setConfig({
                 ...config,
                 apiKey: e.target.value,
@@ -42,7 +42,7 @@ export const AIView: React.FC<PaneViewProps> = (props) => {
             name={t('api_url')}
             type="url"
             value={config.apiUrl || ''}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               setConfig({
                 ...config,
                 apiUrl: e.target.value,
@@ -55,7 +55,7 @@ export const AIView: React.FC<PaneViewProps> = (props) => {
           <TextField
             name={t('model_name')}
             value={config.modelName || ''}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               setConfig({
                 ...config,
                 modelName: e.target.value,
@@ -66,10 +66,23 @@ export const AIView: React.FC<PaneViewProps> = (props) => {
         </div>
         <div>
           <TextField
+            name={t('embedding_model')}
+            value={config.embeddingModelName || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setConfig({
+                ...config,
+                embeddingModelName: e.target.value,
+              })
+            }}
+            placeholder={t('embedding_model.placeholder')}
+          />
+        </div>
+        <div>
+          <TextField
             name={t('translate_prompt')}
             as="textarea"
             value={config.translatePrompt || ''}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
               setConfig({
                 ...config,
                 translatePrompt: e.target.value,
@@ -84,7 +97,7 @@ export const AIView: React.FC<PaneViewProps> = (props) => {
             name={t('summarize_prompt')}
             as="textarea"
             value={config.summarizePrompt || ''}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
               setConfig({
                 ...config,
                 summarizePrompt: e.target.value,

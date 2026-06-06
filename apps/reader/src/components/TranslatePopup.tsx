@@ -40,16 +40,30 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
       return
     }
 
+    const abort = new AbortController()
+    let accumulated = ''
+
     const translate = async () => {
       try {
-        const { translateText } = await import('../utils/translate')
-        const result = await translateText(text, config)
+        const [{ translateTextStream }, { searchKB, buildContext }] =
+          await Promise.all([
+            import('../utils/translate'),
+            import('../utils/rag'),
+          ])
+        const ragResults = await searchKB(text, config)
+        const context = buildContext(ragResults, config.ragContextLength)
+        const result = await translateTextStream(text, config, context, {
+          signal: abort.signal,
+          onChunk: (chunk) => {
+            accumulated += chunk
+            setTranslatedText(accumulated)
+          },
+        })
         if (result.error) {
           setError(result.error)
-        } else {
-          setTranslatedText(result.text)
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'Translation failed')
       } finally {
         setLoading(false)
@@ -57,6 +71,8 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
     }
 
     translate()
+
+    return () => abort.abort()
   }, [text, config])
 
   useEffect(() => {
@@ -137,7 +153,7 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
 
   return (
     <>
-      <Overlay className="!z-[60] !bg-transparent" onMouseDown={onClose} />
+      <Overlay className="!z-[60] !bg-black/10" />
       <div
         ref={popupRef}
         className={clsx(
@@ -178,7 +194,7 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
           </div>
         </div>
         <div className="typescale-body-medium text-on-surface">
-          {loading && (
+          {loading && !translatedText && (
             <div className="text-on-surface-variant">
               {t('translate.loading')}
             </div>
@@ -186,8 +202,13 @@ export const TranslatePopup: React.FC<TranslatePopupProps> = ({
           {error && (
             <div className="text-error text-on-surface-variant">{error}</div>
           )}
-          {!loading && !error && translatedText && (
-            <div className="whitespace-pre-wrap">{translatedText}</div>
+          {translatedText && (
+            <div className="whitespace-pre-wrap">
+              {translatedText}
+              {loading && (
+                <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-current" />
+              )}
+            </div>
           )}
         </div>
       </div>

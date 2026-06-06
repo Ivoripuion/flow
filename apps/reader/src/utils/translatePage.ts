@@ -62,48 +62,55 @@ export function extractParagraphs(doc: Document): Paragraph[] {
 }
 
 /**
- * Translate paragraphs and insert translations into the document
+ * Translate paragraphs and insert translations into the document.
+ * Uses concurrent workers for better throughput.
  */
 export async function translatePage(
   paragraphs: Paragraph[],
   config: AIConfig,
   onProgress?: (progress: number) => void,
+  context?: string,
+  concurrency = 3,
 ): Promise<{ success: number; failed: number }> {
   let success = 0
   let failed = 0
+  let completed = 0
 
-  for (let i = 0; i < paragraphs.length; i++) {
-    const paragraph = paragraphs[i]
+  const queue = paragraphs.map((p) => ({ paragraph: p }))
+  const workers: Promise<void>[] = []
 
-    try {
-      // Translate the paragraph
-      const result = await translateText(paragraph.text, config)
+  for (let w = 0; w < Math.min(concurrency, paragraphs.length); w++) {
+    workers.push(
+      (async () => {
+        while (queue.length > 0) {
+          const item = queue.shift()
+          if (!item) break
 
-      if (result.error || !result.text) {
-        failed++
-        continue
-      }
+          const { paragraph } = item
 
-      paragraph.translatedText = result.text
+          try {
+            const result = await translateText(paragraph.text, config, context)
 
-      // Insert translation after the original paragraph
-      insertTranslation(paragraph.element, result.text)
+            if (result.error || !result.text) {
+              failed++
+            } else {
+              paragraph.translatedText = result.text
+              insertTranslation(paragraph.element, result.text)
+              success++
+            }
+          } catch (error) {
+            failed++
+            console.error('Translation error:', error)
+          }
 
-      success++
-
-      // Report progress
-      if (onProgress) {
-        onProgress((i + 1) / paragraphs.length)
-      }
-
-      // Small delay to avoid overwhelming the API
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    } catch (error) {
-      failed++
-      console.error('Translation error:', error)
-    }
+          completed++
+          onProgress?.(completed / paragraphs.length)
+        }
+      })(),
+    )
   }
 
+  await Promise.all(workers)
   return { success, failed }
 }
 
@@ -165,12 +172,6 @@ function insertTranslation(
   } else {
     originalElement.parentNode?.appendChild(translationContainer)
   }
-
-  // Trigger a small delay to ensure DOM is updated before reflow
-  setTimeout(() => {
-    // Force reflow to ensure layout is updated
-    void translationContainer.offsetHeight
-  }, 0)
 }
 
 /**

@@ -29,6 +29,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
   const dragStartPos = useRef({ x: 0, y: 0 })
   const dragStartMousePos = useRef({ x: 0, y: 0 })
   const hasDragged = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
   const [config] = useAIConfig()
   const t = useTranslation('ai_assistant')
 
@@ -156,6 +157,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
     setShowSummary(true)
     setLoading(true)
     setError('')
+    setSummaryText('')
+
+    const abort = new AbortController()
+    abortRef.current = abort
 
     try {
       // Get current page content
@@ -166,7 +171,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
         return
       }
 
-      const view = contents[0]
+      const view = contents[0]!
       const doc = view.document
       const text = doc.body.textContent?.trim() || ''
 
@@ -176,18 +181,31 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
         return
       }
 
-      const { summarizeText } = await import('../utils/summarize')
-      const result = await summarizeText(text, config)
+      const [{ summarizeTextStream }, { searchKB, buildContext }] =
+        await Promise.all([
+          import('../utils/summarize'),
+          import('../utils/rag'),
+        ])
+      const ragResults = await searchKB(text, config)
+      const context = buildContext(ragResults, config.ragContextLength)
+
+      let accumulated = ''
+      const result = await summarizeTextStream(text, config, context, {
+        signal: abort.signal,
+        onChunk: (chunk) => {
+          accumulated += chunk
+          setSummaryText(accumulated)
+        },
+      })
 
       if (result.error) {
         setError(result.error)
-      } else {
-        setSummaryText(result.text)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('summarize.error.failed'))
     } finally {
       setLoading(false)
+      abortRef.current = null
     }
   }
 
@@ -207,7 +225,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
         return
       }
 
-      const view = contents[0]
+      const view = contents[0]!
       const doc = view.document
 
       // Check if already translated
@@ -225,9 +243,11 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
       }
 
       // Extract paragraphs
-      const { extractParagraphs, translatePage } = await import(
-        '../utils/translatePage'
-      )
+      const [{ extractParagraphs, translatePage }, { searchKB, buildContext }] =
+        await Promise.all([
+          import('../utils/translatePage'),
+          import('../utils/rag'),
+        ])
       const paragraphs = extractParagraphs(doc)
 
       if (paragraphs.length === 0) {
@@ -236,16 +256,26 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
         return
       }
 
+      // Search knowledge base for relevant context
+      const pageText = paragraphs.map((p) => p.text).join('\n')
+      const ragResults = await searchKB(pageText, config)
+      const context = buildContext(ragResults, config.ragContextLength)
+
       setTranslateStatus(`${t('translate.progress')}: 0/${paragraphs.length}`)
 
       // Translate paragraphs
-      const result = await translatePage(paragraphs, config, (progress) => {
-        setTranslateProgress(progress)
-        const current = Math.round(progress * paragraphs.length)
-        setTranslateStatus(
-          `${t('translate.progress')}: ${current}/${paragraphs.length}`,
-        )
-      })
+      const result = await translatePage(
+        paragraphs,
+        config,
+        (progress) => {
+          setTranslateProgress(progress)
+          const current = Math.round(progress * paragraphs.length)
+          setTranslateStatus(
+            `${t('translate.progress')}: ${current}/${paragraphs.length}`,
+          )
+        },
+        context,
+      )
 
       // Trigger reflow to adjust page layout
       tab.rendition?.resize()
@@ -361,10 +391,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
 
       {showSummary && (
         <>
-          <Overlay
-            className="!z-[51] !bg-transparent"
-            onMouseDown={() => setShowSummary(false)}
-          />
+          <Overlay className="!z-[51] !bg-black/20" />
           <div
             className="bg-surface text-on-surface-variant shadow-2 fixed left-1/2 top-1/2 z-[51] max-h-[80vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded p-4"
             onMouseDown={(e) => e.stopPropagation()}
@@ -376,15 +403,28 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
                   {t('summarize.title')}
                 </span>
               </div>
-              <IconButton
-                title={t('close')}
-                Icon={MdClose}
-                size={scale(20, 24)}
-                onClick={() => setShowSummary(false)}
-              />
+              <div className="flex items-center gap-2">
+                {loading && (
+                  <button
+                    className="text-on-surface-variant hover:text-on-surface rounded px-2 py-1 text-sm"
+                    onClick={() => abortRef.current?.abort()}
+                  >
+                    {t('summarize.stop')}
+                  </button>
+                )}
+                <IconButton
+                  title={t('close')}
+                  Icon={MdClose}
+                  size={scale(20, 24)}
+                  onClick={() => {
+                    abortRef.current?.abort()
+                    setShowSummary(false)
+                  }}
+                />
+              </div>
             </div>
             <div className="typescale-body-medium text-on-surface max-h-[60vh] overflow-y-auto">
-              {loading && (
+              {loading && !summaryText && (
                 <div className="text-on-surface-variant">
                   {t('summarize.loading')}
                 </div>
@@ -394,8 +434,13 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tab }) => {
                   {error}
                 </div>
               )}
-              {!loading && !error && summaryText && (
-                <div className="whitespace-pre-wrap">{summaryText}</div>
+              {summaryText && (
+                <div className="whitespace-pre-wrap">
+                  {summaryText}
+                  {loading && (
+                    <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-current" />
+                  )}
+                </div>
               )}
             </div>
           </div>

@@ -11,7 +11,8 @@ function localStorageEffect<T>(key: string, defaultValue: T): AtomEffect<T> {
     if (savedValue === null) {
       localStorage.setItem(key, JSON.stringify(defaultValue))
     } else {
-      setSelf(JSON.parse(savedValue))
+      // Merge defaults to fill in any newly added fields
+      setSelf({ ...defaultValue, ...JSON.parse(savedValue) })
     }
 
     onSet((newValue, _, isReset) => {
@@ -36,16 +37,20 @@ export interface AIConfig {
   apiKey?: string
   apiUrl?: string
   modelName?: string
+  embeddingModelName?: string
   translatePrompt?: string
   summarizePrompt?: string
+  ragContextLength?: number
 }
 
 export const defaultAIConfig: AIConfig = {
   apiKey: '',
   apiUrl: 'https://api.openai.com/v1',
   modelName: 'gpt-3.5-turbo',
+  embeddingModelName: 'text-embedding-v3',
   translatePrompt: '请将以下文本翻译成中文，保持原文的格式和风格：',
   summarizePrompt: '请总结以下文本的主要内容，要求简洁明了：',
+  ragContextLength: 1000,
 }
 
 const aiConfigState = atom<AIConfig>({

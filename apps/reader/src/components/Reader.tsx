@@ -46,6 +46,15 @@ import * as pages from './pages'
 
 function handleKeyDown(tab?: BookTab) {
   return (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
+      return
+    }
+
     try {
       switch (e.code) {
         case 'ArrowLeft':

@@ -11,6 +11,7 @@ import {
   MdTimeline,
   MdOutlineLightMode,
   MdSmartToy,
+  MdLibraryBooks,
 } from 'react-icons/md'
 import { RiFontSize, RiHome6Line, RiSettings5Line } from 'react-icons/ri'
 import { useRecoilState } from 'recoil'
@@ -34,6 +35,7 @@ import { Settings } from './pages'
 import { AIView } from './viewlets/AIView'
 import { AnnotationView } from './viewlets/AnnotationView'
 import { ImageView } from './viewlets/ImageView'
+import { KBView } from './viewlets/KBView'
 import { SearchView } from './viewlets/SearchView'
 import { ThemeView } from './viewlets/ThemeView'
 import { TimelineView } from './viewlets/TimelineView'
@@ -131,6 +133,13 @@ const viewActions: IViewAction[] = [
     title: 'ai',
     Icon: MdSmartToy,
     View: AIView,
+    env: Env.Desktop | Env.Mobile,
+  },
+  {
+    name: 'kb',
+    title: 'kb',
+    Icon: MdLibraryBooks,
+    View: KBView,
     env: Env.Desktop | Env.Mobile,
   },
 ]
@@ -315,14 +324,15 @@ const SideBar: React.FC = () => {
         )}
         style={{ width: mobile ? '75%' : size }}
       >
-        {viewActions.map(({ name, title, View }) => (
-          <View
-            key={name}
-            name={t(`${name}.title`)}
-            title={t(`${title}.title`)}
-            className={clsx(name !== action && '!hidden')}
-          />
-        ))}
+        {viewActions.map(({ name, title, View }) =>
+          name === action ? (
+            <View
+              key={name}
+              name={t(`${name}.title`)}
+              title={t(`${title}.title`)}
+            />
+          ) : null,
+        )}
       </div>
     </>
   )

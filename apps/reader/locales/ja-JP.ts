@@ -52,16 +52,33 @@ export default {
   'ai.api_url.placeholder': 'https://api.openai.com/v1',
   'ai.model_name': 'モデル名',
   'ai.model_name.placeholder': 'gpt-3.5-turbo',
+  'ai.embedding_model': '埋め込みモデル',
+  'ai.embedding_model.placeholder': 'text-embedding-v3',
   'ai.translate_prompt': '翻訳プロンプト',
   'ai.translate_prompt.placeholder':
     '以下のテキストを中国語に翻訳してください。元の形式とスタイルを維持してください：',
   'ai.summarize_prompt': '要約プロンプト',
   'ai.summarize_prompt.placeholder':
     '以下のテキストの主要内容を要約してください。簡潔で明確に：',
+  'kb.title': 'ナレッジベース',
+  'kb.select_folder': '保存先フォルダを選択',
+  'kb.folder_path': '保存先パス',
+  'kb.needs_folder': '先に保存先フォルダを選択してください',
+  'kb.upload': 'PDFをアップロード',
+  'kb.uploading': 'アップロード中...',
+  'kb.parsing': 'PDFを解析中...',
+  'kb.embedding': 'ベクトルを生成中 ({{current}}/{{total}})...',
+  'kb.complete': '完了：{{chunks}} チャンク',
+  'kb.delete': '削除',
+  'kb.enable': '有効',
+  'kb.empty': 'ナレッジベースがありません',
+  'kb.processing': '処理中...',
+  'kb.context_length': 'コンテキスト長（エントリあたりの文字数）',
 
   'ai_assistant.summarize': 'AI 要約',
   'ai_assistant.summarize.title': 'ページ要約',
   'ai_assistant.summarize.loading': '要約中...',
+  'ai_assistant.summarize.stop': '停止',
   'ai_assistant.summarize.error.no_content':
     '現在のページコンテンツを取得できません',
   'ai_assistant.summarize.error.no_text':
